@@ -1,5 +1,5 @@
 ---
-name: Fetch and merge usptream
+name: Fetch and merge upstream
 on:
   workflow_dispatch:
   schedule:
