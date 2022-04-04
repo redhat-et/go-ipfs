@@ -25,7 +25,7 @@ jobs:
         # REQUIRED 'target_repo_token' exactly like this!
         target_repo_token: ${{ secrets.GITHUB_TOKEN }}
         upstream_sync_branch: master
-        upstream_sync_repo: ipfs/go-ipfs.git
+        upstream_sync_repo: ipfs/go-ipfs
         upstream_repo_access_token: ${{ secrets.GITHUB_TOKEN }}
       
     # Step 3: Display a sample message based on the sync output var 'has_new_commits'
