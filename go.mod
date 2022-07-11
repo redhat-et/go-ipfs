@@ -123,11 +123,6 @@ require (
 )
 
 require (
-	github.com/benbjohnson/clock v1.3.0
-	github.com/ipfs/go-log/v2 v2.5.1
-)
-
-require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/Kubuxu/go-os-helper v0.0.1 // indirect
 	github.com/Stebalien/go-bitfield v0.0.1 // indirect
