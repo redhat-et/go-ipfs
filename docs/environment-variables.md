@@ -1,4 +1,4 @@
-# go-ipfs environment variables
+# Kubo environment variables
 
 ## `IPFS_PATH`
 
@@ -9,7 +9,7 @@ Default: ~/.ipfs
 
 ## `IPFS_LOGGING`
 
-Specifies the log level for go-ipfs.
+Specifies the log level for Kubo.
 
 `IPFS_LOGGING` is a deprecated alias for the `GOLOG_LOG_LEVEL` environment variable.  See below.
 
@@ -61,11 +61,11 @@ The logging format defaults to `color` when the output is a terminal, and `nocol
 
 ## `GOLOG_FILE`
 
-Sets the file to which go-ipfs logs. By default, go-ipfs logs to standard error.
+Sets the file to which Kubo logs. By default, Kubo logs to standard error.
 
 ## `GOLOG_TRACING_FILE`
 
-Sets the file to which go-ipfs sends tracing events. By default, tracing is
+Sets the file to which Kubo sends tracing events. By default, tracing is
 disabled.
 
 This log can be read at runtime (without writing it to a file) using the `ipfs
@@ -87,14 +87,14 @@ Default: false
 
 ## `IPFS_FD_MAX`
 
-Sets the file descriptor limit for go-ipfs. If go-ipfs fails to set the file
+Sets the file descriptor limit for Kubo. If Kubo fails to set the file
 descriptor limit, it will log an error.
 
 Defaults: 2048
 
 ## `IPFS_DIST_PATH`
 
-IPFS Content Path from which go-ipfs fetches repo migrations (when the daemon
+IPFS Content Path from which Kubo fetches repo migrations (when the daemon
 is launched with the `--migrate` flag).
 
 Default: `/ipfs/<cid>` (the exact path is hardcoded in
@@ -116,7 +116,7 @@ $ ipfs resolve -r /ipns/dnslink-test2.example.com
 
 ## `LIBP2P_TCP_REUSEPORT`
 
-go-ipfs tries to reuse the same source port for all connections to improve NAT
+Kubo tries to reuse the same source port for all connections to improve NAT
 traversal. If this is an issue, you can disable it by setting
 `LIBP2P_TCP_REUSEPORT` to false.
 
@@ -126,7 +126,7 @@ Default: true
 
 Deprecated: Use the `Swarm.Transports.Multiplexers` config field.
 
-Tells go-ipfs which multiplexers to use in which order.
+Tells Kubo which multiplexers to use in which order.
 
 Default: "/yamux/1.0.0 /mplex/6.7.0"
 
@@ -134,7 +134,7 @@ Default: "/yamux/1.0.0 /mplex/6.7.0"
 
 Forces [libp2p Network Resource Manager](https://github.com/libp2p/go-libp2p-resource-manager#readme)
 to be enabled (`1`) or disabled (`0`).
-When set, overrides [`Swarm.ResourceMgr.Enabled`](https://github.com/ipfs/go-ipfs/blob/master/docs/config.md#swarmresourcemgrenabled) from the config.
+When set, overrides [`Swarm.ResourceMgr.Enabled`](https://github.com/ipfs/kubo/blob/master/docs/config.md#swarmresourcemgrenabled) from the config.
 
 Default: use config (not set)
 
@@ -147,25 +147,50 @@ and outputs it to `rcmgr.json.gz`
 Default: disabled (not set)
 
 # Tracing
+For advanced configuration (e.g. ratio-based sampling), see also: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md
 
-## `IPFS_TRACING`
-Enables OpenTelemetry tracing.
+## `OTEL_TRACES_EXPORTER`
+Specifies the exporters to use as a comma-separated string. Each exporter has a set of additional environment variables used to configure it. The following values are supported:
+
+- `otlp`
+- `jaeger`
+- `zipkin`
+- `file` -- appends traces to a JSON file on the filesystem
+
+Setting this enables OpenTelemetry tracing.
 
 **NOTE** Tracing support is experimental: releases may contain tracing-related breaking changes.
 
-Default: false
+Default: "" (no exporters)
 
-## `IPFS_TRACING_JAEGER`
-Enables the Jaeger exporter for OpenTelemetry.
+## `OTLP Exporter`
+Unless specified in this section, the OTLP exporter uses the environment variables documented here: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/exporter.md
 
-For additional Jaeger exporter configuration, see: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md#jaeger-exporter
+### `OTEL_EXPORTER_OTLP_PROTOCOL`
+Specifies the OTLP protocol to use, which is one of:
 
-Default: false
+- `grpc`
+- `http/protobuf`
+
+Default: "grpc"
+
+## `Jaeger Exporter`
+
+See: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md#jaeger-exporter
+
+## `Zipkin Exporter`
+See: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md#zipkin-exporter
+
+## `File Exporter`
+### `OTEL_EXPORTER_FILE_PATH`
+Specifies the filesystem path for the JSON file.
+
+Default: "$PWD/traces.json"
 
 ### How to use Jaeger UI
 
 One can use the `jaegertracing/all-in-one` Docker image to run a full Jaeger
-stack and configure go-ipfs to publish traces to it (here, in an ephemeral
+stack and configure Kubo to publish traces to it (here, in an ephemeral
 container):
 
 ```console
@@ -177,41 +202,15 @@ $ docker run --rm -it --name jaeger \
     -p 5778:5778 \
     -p 16686:16686 \
     -p 14268:14268 \
+    -p 14268:14269 \
     -p 14250:14250 \
     -p 9411:9411 \
     jaegertracing/all-in-one
 ```
 
-Then, in other terminal, start go-ipfs with Jaeger tracing enabled:
+Then, in other terminal, start Kubo with Jaeger tracing enabled:
 ```
-$ IPFS_TRACING=1 IPFS_TRACING_JAEGER=1 ipfs daemon
+$ OTEL_TRACES_EXPORTER=jaeger ipfs daemon
 ```
 
 Finally, the [Jaeger UI](https://github.com/jaegertracing/jaeger-ui#readme) is available at http://localhost:16686
-
-
-## `IPFS_TRACING_OTLP_HTTP`
-Enables the OTLP HTTP exporter for OpenTelemetry.
-
-For additional exporter configuration, see: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/exporter.md
-
-Default: false
-
-## `IPFS_TRACING_OTLP_GRPC`
-Enables the OTLP gRPC exporter for OpenTelemetry.
-
-For additional exporter configuration, see: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/exporter.md
-
-Default: false
-
-## `IPFS_TRACING_FILE`
-Enables the file exporter for OpenTelemetry, writing traces to the given file in JSON format.
-
-Example: "/var/log/ipfs-traces.json"
-
-Default: "" (disabled)
-
-## `IPFS_TRACING_RATIO`
-The ratio of traces to export, as a floating point value in the interval [0, 1].
-
-Default: 1.0 (export all traces)

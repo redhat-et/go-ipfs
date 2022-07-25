@@ -13,16 +13,17 @@ import (
 	"time"
 
 	files "github.com/ipfs/go-ipfs-files"
-	"github.com/ipfs/go-ipfs/commands"
-	"github.com/ipfs/go-ipfs/config"
-	"github.com/ipfs/go-ipfs/core/commands/cmdenv"
-	"github.com/ipfs/go-ipfs/core/node/libp2p"
-	"github.com/ipfs/go-ipfs/repo"
-	"github.com/ipfs/go-ipfs/repo/fsrepo"
+	"github.com/ipfs/kubo/commands"
+	"github.com/ipfs/kubo/config"
+	"github.com/ipfs/kubo/core/commands/cmdenv"
+	"github.com/ipfs/kubo/core/node/libp2p"
+	"github.com/ipfs/kubo/repo"
+	"github.com/ipfs/kubo/repo/fsrepo"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	rcmgr "github.com/libp2p/go-libp2p-resource-manager"
 	ma "github.com/multiformats/go-multiaddr"
 	madns "github.com/multiformats/go-multiaddr-dns"
 	mamask "github.com/whyrusleeping/multiaddr-filter"
@@ -78,7 +79,7 @@ var swarmPeeringCmd = &cmds.Command{
 		Tagline: "Modify the peering subsystem.",
 		ShortDescription: `
 'ipfs swarm peering' manages the peering subsystem. 
-Peers in the peering subsystem is maintained to be connected, reconnected 
+Peers in the peering subsystem are maintained to be connected, reconnected 
 on disconnect with a back-off.
 The changes are not saved to the config.
 `,
@@ -380,8 +381,7 @@ It is possible to use this command to inspect and tweak limits at runtime:
 	$ vi limit.json
 	$ ipfs swarm limit system limit.json
 
-Changes made via command line are discarded on node shutdown.
-For permanent limits set Swarm.ResourceMgr.Limits in the $IPFS_PATH/config file.
+Changes made via command line are persisted in the Swarm.ResourceMgr.Limits field of the $IPFS_PATH/config file.
 `},
 	Arguments: []cmds.Argument{
 		cmds.StringArg("scope", true, false, "scope of the limit"),
@@ -401,7 +401,7 @@ For permanent limits set Swarm.ResourceMgr.Limits in the $IPFS_PATH/config file.
 
 		//  set scope limit to new values (when limit.json is passed as a second arg)
 		if req.Files != nil {
-			var newLimit config.ResourceMgrScopeConfig
+			var newLimit rcmgr.BasicLimitConfig
 			it := req.Files.Entries()
 			if it.Next() {
 				file := files.FileFromEntry(it)
@@ -409,9 +409,9 @@ For permanent limits set Swarm.ResourceMgr.Limits in the $IPFS_PATH/config file.
 					return errors.New("expected a JSON file")
 				}
 				if err := json.NewDecoder(file).Decode(&newLimit); err != nil {
-					return errors.New("failed to decode JSON as ResourceMgrScopeConfig")
+					return fmt.Errorf("decoding JSON as ResourceMgrScopeConfig: %w", err)
 				}
-				return libp2p.NetSetLimit(node.ResourceManager, scope, newLimit)
+				return libp2p.NetSetLimit(node.ResourceManager, node.Repo, scope, newLimit)
 			}
 			if err := it.Err(); err != nil {
 				return fmt.Errorf("error opening limit JSON file: %w", err)

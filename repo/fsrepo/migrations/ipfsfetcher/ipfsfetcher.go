@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
@@ -13,15 +12,15 @@ import (
 	"sync"
 
 	files "github.com/ipfs/go-ipfs-files"
-	"github.com/ipfs/go-ipfs/config"
-	"github.com/ipfs/go-ipfs/core"
-	"github.com/ipfs/go-ipfs/core/coreapi"
-	"github.com/ipfs/go-ipfs/core/node/libp2p"
-	"github.com/ipfs/go-ipfs/repo/fsrepo"
-	"github.com/ipfs/go-ipfs/repo/fsrepo/migrations"
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	ipath "github.com/ipfs/interface-go-ipfs-core/path"
+	"github.com/ipfs/kubo/config"
+	"github.com/ipfs/kubo/core"
+	"github.com/ipfs/kubo/core/coreapi"
+	"github.com/ipfs/kubo/core/node/libp2p"
+	"github.com/ipfs/kubo/repo/fsrepo"
+	"github.com/ipfs/kubo/repo/fsrepo/migrations"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -33,9 +32,10 @@ const (
 )
 
 type IpfsFetcher struct {
-	distPath string
-	limit    int64
-	repoRoot *string
+	distPath       string
+	limit          int64
+	repoRoot       *string
+	userConfigFile string
 
 	openOnce  sync.Once
 	openErr   error
@@ -62,11 +62,12 @@ var _ migrations.Fetcher = (*IpfsFetcher)(nil)
 // Bootstrap and peer information in read from the IPFS config file in
 // repoRoot, unless repoRoot is nil.  If repoRoot is empty (""), then read the
 // config from the default IPFS directory.
-func NewIpfsFetcher(distPath string, fetchLimit int64, repoRoot *string) *IpfsFetcher {
+func NewIpfsFetcher(distPath string, fetchLimit int64, repoRoot *string, userConfigFile string) *IpfsFetcher {
 	f := &IpfsFetcher{
-		limit:    defaultFetchLimit,
-		distPath: migrations.LatestIpfsDist,
-		repoRoot: repoRoot,
+		limit:          defaultFetchLimit,
+		distPath:       migrations.LatestIpfsDist,
+		repoRoot:       repoRoot,
+		userConfigFile: userConfigFile,
 	}
 
 	if distPath != "" {
@@ -92,7 +93,7 @@ func (f *IpfsFetcher) Fetch(ctx context.Context, filePath string) ([]byte, error
 	// Initialize and start IPFS node on first call to Fetch, since the fetcher
 	// may be created by not used.
 	f.openOnce.Do(func() {
-		bootstrap, peers := readIpfsConfig(f.repoRoot)
+		bootstrap, peers := readIpfsConfig(f.repoRoot, f.userConfigFile)
 		f.ipfsTmpDir, f.openErr = initTempNode(ctx, bootstrap, peers)
 		if f.openErr != nil {
 			return
@@ -132,7 +133,7 @@ func (f *IpfsFetcher) Fetch(ctx context.Context, filePath string) ([]byte, error
 	}
 	defer rc.Close()
 
-	return ioutil.ReadAll(rc)
+	return io.ReadAll(rc)
 }
 
 func (f *IpfsFetcher) Close() error {
@@ -169,7 +170,7 @@ func (f *IpfsFetcher) recordFetched(fetchedPath ipath.Path) {
 }
 
 func initTempNode(ctx context.Context, bootstrap []string, peers []peer.AddrInfo) (string, error) {
-	identity, err := config.CreateIdentity(ioutil.Discard, []options.KeyGenerateOption{
+	identity, err := config.CreateIdentity(io.Discard, []options.KeyGenerateOption{
 		options.Key.Type(options.Ed25519Key),
 	})
 	if err != nil {
@@ -181,13 +182,13 @@ func initTempNode(ctx context.Context, bootstrap []string, peers []peer.AddrInfo
 	}
 
 	// create temporary ipfs directory
-	dir, err := ioutil.TempDir("", "ipfs-temp")
+	dir, err := os.MkdirTemp("", "ipfs-temp")
 	if err != nil {
 		return "", fmt.Errorf("failed to get temp dir: %s", err)
 	}
 
 	// configure the temporary node
-	cfg.Routing.Type = "dhtclient"
+	cfg.Routing.Type = config.NewOptionalString("dhtclient")
 
 	// Disable listening for inbound connections
 	cfg.Addresses.Gateway = []string{}
@@ -245,8 +246,6 @@ func (f *IpfsFetcher) startTempNode(ctx context.Context) error {
 		cancel()
 		// Wait until ipfs is stopped
 		<-node.Context().Done()
-
-		fmt.Println("migration peer", node.Identity, "shutdown")
 	}
 
 	addrs, err := ipfs.Swarm().LocalAddrs(ctx)
@@ -288,12 +287,12 @@ func parsePath(fetchPath string) (ipath.Path, error) {
 	return ipfsPath, ipfsPath.IsValid()
 }
 
-func readIpfsConfig(repoRoot *string) (bootstrap []string, peers []peer.AddrInfo) {
+func readIpfsConfig(repoRoot *string, userConfigFile string) (bootstrap []string, peers []peer.AddrInfo) {
 	if repoRoot == nil {
 		return
 	}
 
-	cfgPath, err := config.Filename(*repoRoot)
+	cfgPath, err := config.Filename(*repoRoot, userConfigFile)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return

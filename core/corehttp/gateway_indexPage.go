@@ -6,20 +6,21 @@ import (
 	"path"
 	"strings"
 
-	"github.com/ipfs/go-ipfs/assets"
 	ipfspath "github.com/ipfs/go-path"
+	"github.com/ipfs/kubo/assets"
 )
 
 // structs for directory listing
 type listingTemplateData struct {
-	GatewayURL  string
-	DNSLink     bool
-	Listing     []directoryItem
-	Size        string
-	Path        string
-	Breadcrumbs []breadcrumb
-	BackLink    string
-	Hash        string
+	GatewayURL            string
+	DNSLink               bool
+	Listing               []directoryItem
+	Size                  string
+	Path                  string
+	Breadcrumbs           []breadcrumb
+	BackLink              string
+	Hash                  string
+	FastDirIndexThreshold int
 }
 
 type directoryItem struct {

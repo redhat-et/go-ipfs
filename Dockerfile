@@ -1,5 +1,5 @@
 # Note: when updating the go minor version here, also update the go-channel in snap/snapcraft.yml
-FROM golang:1.16.15-buster
+FROM golang:1.18.3-buster
 LABEL maintainer="Steven Allen <steven@stebalien.com>"
 
 # Install deps
@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
   ca-certificates \
   fuse
 
-ENV SRC_DIR /go-ipfs
+ENV SRC_DIR /kubo
 
 # Download packages first so they can be cached.
 COPY go.mod go.sum $SRC_DIR/
@@ -25,7 +25,7 @@ ARG IPFS_PLUGINS
 # Also: fix getting HEAD commit hash via git rev-parse.
 RUN cd $SRC_DIR \
   && mkdir -p .git/objects \
-  && make build GOTAGS=openssl IPFS_PLUGINS=$IPFS_PLUGINS
+  && GOFLAGS=-buildvcs=false make build GOTAGS=openssl IPFS_PLUGINS=$IPFS_PLUGINS
 
 # Get su-exec, a very minimal tool for dropping privileges,
 # and tini, a very minimal init daemon for containers
@@ -51,7 +51,7 @@ FROM busybox:1.31.1-glibc
 LABEL maintainer="Steven Allen <steven@stebalien.com>"
 
 # Get the ipfs binary, entrypoint script, and TLS CAs from the build container.
-ENV SRC_DIR /go-ipfs
+ENV SRC_DIR /kubo
 COPY --from=0 $SRC_DIR/cmd/ipfs/ipfs /usr/local/bin/ipfs
 COPY --from=0 $SRC_DIR/bin/container_daemon /usr/local/bin/start_ipfs
 COPY --from=0 $SRC_DIR/bin/container_init_run /usr/local/bin/container_init_run

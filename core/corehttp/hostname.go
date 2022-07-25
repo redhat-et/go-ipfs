@@ -10,18 +10,18 @@ import (
 	"strings"
 
 	cid "github.com/ipfs/go-cid"
-	core "github.com/ipfs/go-ipfs/core"
-	coreapi "github.com/ipfs/go-ipfs/core/coreapi"
 	namesys "github.com/ipfs/go-namesys"
+	core "github.com/ipfs/kubo/core"
+	coreapi "github.com/ipfs/kubo/core/coreapi"
 	"github.com/libp2p/go-libp2p-core/peer"
 	dns "github.com/miekg/dns"
 
 	mbase "github.com/multiformats/go-multibase"
 
-	config "github.com/ipfs/go-ipfs/config"
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	options "github.com/ipfs/interface-go-ipfs-core/options"
 	nsopts "github.com/ipfs/interface-go-ipfs-core/options/namesys"
+	config "github.com/ipfs/kubo/config"
 )
 
 var defaultPaths = []string{"/ipfs/", "/ipns/", "/api/", "/p2p/"}
@@ -249,6 +249,7 @@ func withHostnameContext(r *http.Request, hostname string) *http.Request {
 	// on subdomain and dnslink gateways. While DNSlink could read value from
 	// Host header, subdomain gateways have more comples rules (knownSubdomainDetails)
 	// More: https://github.com/ipfs/dir-index-html/issues/42
+	// nolint: staticcheck // non-backward compatible change
 	ctx := context.WithValue(r.Context(), "gw-hostname", hostname)
 	return r.WithContext(ctx)
 }
@@ -505,13 +506,13 @@ func toSubdomainURL(hostname, path string, r *http.Request, ipfs iface.CoreAPI) 
 		// Normalizations specific to /ipns/{libp2p-key}
 		if isPeerIDNamespace(ns) {
 			// Using Base36 for /ipns/ for consistency
-			// Context: https://github.com/ipfs/go-ipfs/pull/7441#discussion_r452372828
+			// Context: https://github.com/ipfs/kubo/pull/7441#discussion_r452372828
 			base = mbase.Base36
 
 			// PeerIDs represented as CIDv1 are expected to have libp2p-key
 			// multicodec (https://github.com/libp2p/specs/pull/209).
 			// We ease the transition by fixing multicodec on the fly:
-			// https://github.com/ipfs/go-ipfs/issues/5287#issuecomment-492163929
+			// https://github.com/ipfs/kubo/issues/5287#issuecomment-492163929
 			if multicodec != cid.Libp2pKey {
 				multicodec = cid.Libp2pKey
 			}
@@ -530,7 +531,7 @@ func toSubdomainURL(hostname, path string, r *http.Request, ipfs iface.CoreAPI) 
 			return "", err
 		}
 		// 2. Make sure CID fits in a DNS label, adjust encoding if needed
-		//    (https://github.com/ipfs/go-ipfs/issues/7318)
+		//    (https://github.com/ipfs/kubo/issues/7318)
 		rootID, err = toDNSLabel(rootID, rootCID)
 		if err != nil {
 			return "", err

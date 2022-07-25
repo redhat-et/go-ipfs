@@ -7,8 +7,8 @@ import (
 	"time"
 
 	keystore "github.com/ipfs/go-ipfs-keystore"
-	"github.com/ipfs/go-ipfs/tracing"
 	"github.com/ipfs/go-namesys"
+	"github.com/ipfs/kubo/tracing"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -75,6 +75,7 @@ func (api *NameAPI) Publish(ctx context.Context, p path.Path, opts ...caopts.Nam
 	}
 
 	if options.TTL != nil {
+		// nolint: staticcheck // non-backward compatible change
 		ctx = context.WithValue(ctx, "ipns-publish-ttl", *options.TTL)
 	}
 

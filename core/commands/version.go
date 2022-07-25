@@ -6,7 +6,7 @@ import (
 	"io"
 	"runtime/debug"
 
-	version "github.com/ipfs/go-ipfs"
+	version "github.com/ipfs/kubo"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
@@ -71,7 +71,7 @@ var VersionCmd = &cmds.Command{
 				return nil
 			}
 
-			fmt.Fprint(w, fmt.Sprintf("ipfs version %s%s\n", version.Version, commitTxt))
+			fmt.Fprintf(w, "ipfs version %s%s\n", version.Version, commitTxt)
 			return nil
 		}),
 	},
